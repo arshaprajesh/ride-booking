@@ -36,18 +36,12 @@ public class RideService {
             CreateRideRequest request,
             String idempotencyKey) { //idempotencyKey comes from the HTTP request header:
 
-        log.info(
-                "Processing ride request for customerId={}",
-                request.customerId()
-        );
         validateIdempotencyKey(idempotencyKey);
 
         String requestHash = calculateRequestHash(request); //service calculates a SHA-256 hash using the customer ID and ride coordinates.
         // 1. Check whether this request was already processed
         log.info(
-                "Processing ride request. customerId={}, idempotencyKey={}",
-                request.customerId(),
-                idempotencyKey
+                "Processing ride request"
         );
 
         var existingRide = rideRepository.findByIdempotencyKey(idempotencyKey);
@@ -55,8 +49,8 @@ public class RideService {
         if (existingRide.isPresent()) {
 
             log.info(
-                    "Existing ride found for idempotencyKey={}",
-                    idempotencyKey
+                    "Existing ride found for repeated request. rideId={}",
+                    existingRide.get().getId()
             );
 
             return resolveExistingRide(

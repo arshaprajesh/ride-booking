@@ -26,10 +26,7 @@ public class RideController {
             @Valid @RequestBody CreateRideRequest request,
             @RequestHeader("Idempotency-Key") String idempotencyKey) {
 
-        log.info(
-                "Received ride creation request for customerId={}",
-                request.customerId()
-        );
+        log.info("Received ride creation request");
         RideResponse response =
                 rideService.createRide(request, idempotencyKey);
         log.info(

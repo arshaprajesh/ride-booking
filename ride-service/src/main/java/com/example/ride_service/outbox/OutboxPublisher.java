@@ -59,7 +59,8 @@ public class OutboxPublisher {
                         ).get();//Sends the JSON message to Kafka and waits for the send result.
 
                 log.info(
-                        "Kafka acknowledgement received. topic={}, partition={}, offset={}",
+                        "Kafka acknowledgement received. eventId={}, topic={}, partition={}, offset={}",
+                        event.getId(),
                         result.getRecordMetadata().topic(),
                         result.getRecordMetadata().partition(),
                         result.getRecordMetadata().offset()
@@ -77,9 +78,9 @@ public class OutboxPublisher {
                 event.recordFailure(exception.getMessage());//if failed , it records the error, and leaves published_at as NULL and increments the retry count.
 
                 log.error(
-                        "Failed to publish event: {}. Error: {}",
+                        "Failed to publish event. eventId={}",
                         event.getId(),
-                        exception.getMessage()
+                        exception
                 );
             }
         }
