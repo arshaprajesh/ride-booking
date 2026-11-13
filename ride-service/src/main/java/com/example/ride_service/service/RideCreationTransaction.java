@@ -94,9 +94,10 @@ public class RideCreationTransaction {
                 ride.getId(),
                 ride.getStatus()
         );
+        UUID eventId = UUID.randomUUID();
         // 3. Create ride.requested event.
         RideRequestedEvent event = new RideRequestedEvent(
-                UUID.randomUUID(),
+                eventId,
                 1,
                 rideId,
                 customer.getId(),
@@ -128,7 +129,7 @@ public class RideCreationTransaction {
         }
         // 5. Save event in outbox table.
         OutboxEvent outboxEvent = new OutboxEvent(
-                UUID.randomUUID(),
+                eventId,
                 "RIDE",
                 rideId,
                 "ride.requested",
