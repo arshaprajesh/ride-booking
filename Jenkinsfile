@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -22,6 +21,9 @@ pipeline {
 
                 echo 'Checking Maven version'
                 sh 'mvn -version'
+
+                echo 'Checking Docker version'
+                sh 'docker version'
             }
         }
 
@@ -29,6 +31,22 @@ pipeline {
             steps {
                 echo 'Building Ride Booking and running tests'
                 sh 'mvn -B clean verify'
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                echo 'Building Ride Service Docker image'
+
+                sh '''
+                    docker build \
+                        -f ride-service/Dockerfile \
+                        -t ride-service:${BUILD_NUMBER} \
+                        -t ride-service:latest \
+                        .
+                '''
+
+                echo 'Docker image built successfully!'
             }
         }
     }
