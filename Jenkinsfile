@@ -57,6 +57,7 @@ pipeline {
             }
         }
 
+
         stage('Deploy Ride Service') {
             steps {
                 withCredentials([
@@ -69,35 +70,96 @@ pipeline {
                         set -eu
                         set +x
 
-                        echo "Deploying Ride Service..."
+                        echo "Checking currently deployed image..."
 
-                        RIDE_SERVICE_IMAGE="$RIDE_SERVICE_IMAGE" docker compose \
+                        PREVIOUS_IMAGE=$(docker inspect ride-booking-service \
+                            --format '{{.Config.Image}}')
+
+                        if [ -z "$PREVIOUS_IMAGE" ]; then
+                            echo "Cannot determine previous image. Aborting deployment."
+                            exit 1
+                        fi
+
+                        echo "Previous image: $PREVIOUS_IMAGE"
+
+                        docker image inspect "$PREVIOUS_IMAGE" >/dev/null
+
+                        echo "Deploying new image: $RIDE_SERVICE_IMAGE"
+
+                        DEPLOY_FAILED=0
+
+                        if ! RIDE_SERVICE_IMAGE="$RIDE_SERVICE_IMAGE" docker compose \
                             --env-file "$ENV_FILE" \
                             -p ride-booking \
                             -f docker-compose.yml \
                             up -d --no-deps --no-build ride-service
+                        then
+                            DEPLOY_FAILED=1
+                            echo "Deployment command failed!"
+                        fi
 
-                        echo "Waiting for Ride Service readiness..."
+                        HEALTHY=0
+
+                        if [ "$DEPLOY_FAILED" -eq 0 ]; then
+                            echo "Waiting for new version readiness..."
+
+                            for i in $(seq 1 30); do
+                                if docker exec ride-booking-service \
+                                    curl -fsS \
+                                    http://localhost:8081/actuator/health/readiness
+                                then
+                                    HEALTHY=1
+                                    echo "New Ride Service version is healthy!"
+                                    break
+                                fi
+
+                                sleep 5
+                            done
+                        fi
+
+                        if [ "$HEALTHY" -eq 1 ]; then
+                            echo "Deployment successful!"
+                            exit 0
+                        fi
+
+                        echo "New deployment failed. Starting rollback..."
+                        docker logs --tail 100 ride-booking-service || true
+
+                        echo "Restoring previous image: $PREVIOUS_IMAGE"
+
+                        if ! RIDE_SERVICE_IMAGE="$PREVIOUS_IMAGE" docker compose \
+                            --env-file "$ENV_FILE" \
+                            -p ride-booking \
+                            -f docker-compose.yml \
+                            up -d --no-deps --no-build ride-service
+                        then
+                            echo "CRITICAL: Rollback deployment command failed!"
+                            docker logs --tail 100 ride-booking-service || true
+                            exit 1
+                        fi
+
+                        echo "Checking previous version health..."
 
                         for i in $(seq 1 30); do
                             if docker exec ride-booking-service \
                                 curl -fsS \
                                 http://localhost:8081/actuator/health/readiness
                             then
-                                echo "Ride Service is healthy!"
-                                exit 0
+                                echo "Rollback successful! Previous version is healthy."
+                                exit 1
                             fi
 
                             sleep 5
                         done
 
-                        echo "Ride Service readiness check failed"
-                        docker logs --tail 100 ride-booking-service
+                        echo "CRITICAL: Rollback failed. Previous version is not healthy."
+                        docker logs --tail 100 ride-booking-service || true
                         exit 1
                     '''
                 }
             }
         }
+
     }
 
     post {
