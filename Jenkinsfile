@@ -2,6 +2,10 @@
 pipeline {
     agent any
 
+    environment {
+        RIDE_SERVICE_IMAGE = "ride-service:${BUILD_NUMBER}"
+    }
+
     options {
         timestamps()
     }
@@ -40,13 +44,12 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                echo 'Building Ride Service Docker image'
+                echo "Building Ride Service image: ${RIDE_SERVICE_IMAGE}"
 
                 sh '''
                     docker build \
                         -f ride-service/Dockerfile \
-                        -t ride-service:${BUILD_NUMBER} \
-                        -t ride-service:latest \
+                        -t "$RIDE_SERVICE_IMAGE" \
                         .
                 '''
 
@@ -68,7 +71,7 @@ pipeline {
 
                         echo "Deploying Ride Service..."
 
-                        docker compose \
+                        RIDE_SERVICE_IMAGE="$RIDE_SERVICE_IMAGE" docker compose \
                             --env-file "$ENV_FILE" \
                             -p ride-booking \
                             -f docker-compose.yml \

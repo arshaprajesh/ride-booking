@@ -54,7 +54,7 @@ services:
     build:
       context: .
       dockerfile: ride-service/Dockerfile
-    image: ride-service:latest
+    image: ${RIDE_SERVICE_IMAGE:-ride-service:latest}
     container_name: ride-booking-service
     ports:
       - "8082:8081"

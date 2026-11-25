@@ -6,7 +6,6 @@ services:
     image: ride-booking-jenkins:latest
     container_name: ride-booking-jenkins
     restart: unless-stopped
-    privileged: true
     user: root
 
     environment:
